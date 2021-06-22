@@ -3,7 +3,7 @@
 
 import DriveApiV3 from './driveApiV3';
 import { DRIVE_UI_INTEGRATION_TYPES } from './constants';
-import Picker from './pickerApi';
+import PickerFolder from './pickerApi';
 import Gapi from './gapi';
 
 export const addScript = url => new Promise(res => {
@@ -15,8 +15,6 @@ export const addScript = url => new Promise(res => {
   document.body.appendChild(script);
 });
 
-export const isSameId = (id1, id2) => id1 === id2;
-
 export const getDriveUiIntegrationType = state => {
   const stateKeys = Object.keys(state);
 
@@ -26,19 +24,20 @@ export const getDriveUiIntegrationType = state => {
   const isExportIds = stateKeys.includes('exportIds');
   const isFolderId = stateKeys.includes('folderId');
   // const isResourceKeys = stateKeys.includes('resourceKeys');
+  // const isFolderResourceKey = stateKeys.includes('folderResourceKey');
 
   /* userId and action are general for Open with and New button actions,
     ids are for handling an Open with for an app-specific document,
     exportIds are for handling an Open with for a Google Workspace document,
     folderId is for handling a New URL */
 
-  if (isUserId && isAction && isIds) {
+  if (isUserId && isAction && isIds && state.action === 'open') {
     return DRIVE_UI_INTEGRATION_TYPES.openWithAppSpecificDocument;
   }
-  if (isUserId && isAction && isExportIds) {
+  if (isUserId && isAction && isExportIds && state.action === 'open') {
     return DRIVE_UI_INTEGRATION_TYPES.openWithGoogleWorkspaceDocument;
   }
-  if (isUserId && isAction && isFolderId) {
+  if (isUserId && isAction && isFolderId && state.action === 'create') {
     return DRIVE_UI_INTEGRATION_TYPES.newButton;
   }
 };
@@ -60,15 +59,14 @@ export const getDriveUiIntegrationType = state => {
 //   return colorObj255;
 // };
 
-export const addSrcToCanvas = async imageSrc => {
+export const drawOnCanvas = async ({width, height, src}) => {
   const canvas = document.getElementById('myCanvas');
   const ctx = canvas.getContext('2d');
-  const { width, height } = await getImageSize(imageSrc);
   const baseImage = new Image();
-  baseImage.src = imageSrc;
+  baseImage.src = src;
   baseImage.onload = () => {
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = width / 7;
+    canvas.height = height / 7;
     ctx.drawImage(baseImage, 0, 0);
   };
 };
@@ -111,30 +109,42 @@ export const handleDriveUpload = async ({
   Gapi.driveActiveImageId = res.id;
 };
 
-export const handlDriveUploadForPicker = async imgSettings => {
-  await Gapi.authUser();
-  let parents;
-  // const drivefileId = Gapi.driveActiveImageId;
-  // only for test open picker
-  const drivefileId = undefined;
-  if (drivefileId) {
-    const parentsResp = await DriveApiV3.getFileParents({
-      fileId: drivefileId,
-      fields: 'parents, name',
-    });
-    parents = parentsResp.parents;
-    console.log('parnets', parents);
-    handleDriveUpload(imgSettings, parents);
-  } else {
-    console.log(' before  deletion');
-    Picker.init(handleDriveUpload, imgSettings);
-    console.log('parnets', parents);
-  }
+export const uploadToDriveForPickerFolder = async (folderId) => {
+  const metadata = {
+    name: '0000hardCodeName',
+    mimeType: DriveApiV3.imgOptions.mimeType,
+    parents: [folderId],
+  };
+  console.log(metadata);
+  const b64Data = DriveApiV3.imgOptions.src.split(',')[1]
+  const blob = b64toBlob(b64Data, DriveApiV3.imgOptions.mimeType);
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', blob);
+
+  console.log(form);
+
+  const res = await DriveApiV3.uploadFile(form);
+  console.log(res)
+  alert('Image Saved');
 };
 
-export const handleAuthorizeDriveModal = () => {
-  // eslint-disable-next-line
-  const answer = confirm('Authorization required');
+export const uploadDriveForPicker = async () => {
+  PickerFolder.init(uploadToDriveForPickerFolder);
+};
 
-  return answer
+const b64toBlob = (b64Data, contentType) => {
+  const byteCharacters = atob(b64Data);
+  const byteArrays = [];
+
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+
+  const byteArray = new Uint8Array(byteNumbers);
+  byteArrays.push(byteArray);
+
+  const blob = new Blob(byteArrays, {type: contentType});
+  return blob;
 }

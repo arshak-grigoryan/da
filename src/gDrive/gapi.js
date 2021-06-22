@@ -1,29 +1,44 @@
-import { addScript } from './utils';
 import {
   API_KEY,
   CLIENT_ID,
   DISCOVERY_URLS,
   SCOPES,
   GOOGLE_API_CLIENT_API_SCRIPT_URL,
+  DRIVE_API_SCOPES,
 } from './constants';
-import { handleAuthorizeDriveModal, isSameId } from './helpers';
+import { addScript } from './helpers';
+import DriveApiV3 from './driveApiV3';
 
-class GapiBrowserLibrary {
-  constructor() {
-    this.openWithState = null;
-    this.driveActiveImageId = null;
-    this.imgOptions = null;
+// class Person {
+//   static async create () {
+//       return new Promise((res, rej) => {
+//           setTimeout(() => res(console.log(‘created’)), 2000)
+//       })
+//   }
+// }
+// var newInstance = await Person.create();
+// console.log(‘>>>’);
+
+class GapiClient {
+  constructor(apiKey, clientId, discoverUrls, scopes) {
+    GapiClient.apiKey = apiKey;
+    GapiClient.clientId = clientId;
+    GapiClient.discoverUrls = discoverUrls;
+    GapiClient.scopes = scopes;
   }
 
   async init() {
-    console.log('init');
+    console.log('gapi check');
     if (window.gapi) {
       return;
     }
+    console.log('gapi init');
     try {
       await addScript(GOOGLE_API_CLIENT_API_SCRIPT_URL);
-      await GapiBrowserLibrary.loadClient();
-      await GapiBrowserLibrary.initClient();
+      await GapiClient.loadClient();
+      console.log('after load clint')
+      await GapiClient.initClient();
+      console.log('after init client')
       return gapi;
     } catch (error) {
       console.log(error);
@@ -45,23 +60,25 @@ class GapiBrowserLibrary {
   static initClient() {
     return (
       gapi.client.init({
-        apiKey: API_KEY,
-        clientId: CLIENT_ID,
-        discoveryDocs: DISCOVERY_URLS,
-        scope: SCOPES,
+        apiKey: GapiClient.apiKey,
+        clientId: GapiClient.clientId,
+        discoveryDocs: GapiClient.discoverUrls,
+        scope: GapiClient.scopes,
       })
     );
   }
 
   async signInWithGoogle() {
     await this.init();
+    // need i disconnect every time or i can move it int signinpromt
+    // await this.revokeAccess();
     try {
       const currentUser = await gapi.auth2.getAuthInstance().signIn();
       return currentUser;
     } catch (error) {
       // error case: when user closes sign in prompt
       console.log(error);
-      return error;
+      return null;
     }
   }
 
@@ -70,10 +87,16 @@ class GapiBrowserLibrary {
     gapi.auth2.getAuthInstance().signOut();
   }
 
-  async shareDrive(resetProgressCallback) {
-    console.log('shareDrive');
+  async revokeAccess() {
+    console.log('revokeAccess')
     await this.init();
-    await GapiBrowserLibrary.loadDriveShare();
+    gapi.auth2.getAuthInstance().disconnect();
+  }
+
+  async shareDrive(resetProgressCallback) {
+    // console.log('shareDrive');
+    await this.init();
+    await GapiClient.loadDriveShare();
     const token = gapi.auth.getToken().access_token;
     const s = await new gapi.drive.share.ShareClient();
     s.setOAuthToken(token);
@@ -83,71 +106,80 @@ class GapiBrowserLibrary {
     resetProgressCallback();
   }
 
+  async handleCheckForDifferentUsers(currentUser) {
+    // console.log(currentUser, DriveApiV3.userIdFromDrive)
+    if (currentUser.getId() === DriveApiV3.userIdFromDrive) {
+      return this.handleCheckGorGrantedScopes(currentUser)
+    }
 
-  async authUser(userIdFromDrive) {
+    await this.revokeAccess()
+    // eslint-disable-next-line
+    const isAnswer = confirm(`Your signed account ${currentUser.getBasicProfile().getEmail()} is not match with drive account, choose oter account`);
+
+    if (isAnswer) {
+      return this.handleSignInPrompt()
+    }
+    
+    return this.handleAuthorizeDriveModal();
+  }
+
+  async getGrantedScopes() {
+    await GapiClient.init()
+    return gapi.auth2.getAuthInstance().currentUser.get().getGrantedScopes()
+  }
+
+  handleCheckGorGrantedScopes(currentUser) {
+    // need refactor
+    const grantedScopes = currentUser.getGrantedScopes();
+    const { recommended: { file, install } } = DRIVE_API_SCOPES;
+    if (grantedScopes.includes(file) && grantedScopes.includes(install)) {
+      return currentUser
+    }
+
+    return this.handleAuthorizeDriveModal();
+  }
+
+  async handleSignInPrompt() {
+    await this.revokeAccess();
+    const currentUser = await this.signInWithGoogle();
+    if (currentUser) {
+      return this.handleCheckForDifferentUsers(currentUser)
+    }
+
+    return this.handleAuthorizeDriveModal();
+  }
+
+  handleAuthorizeDriveModal() {
+    // eslint-disable-next-line
+    const isAnswer = confirm('Authorize Drive');
+    if (isAnswer) {
+      return this.handleSignInPrompt();
+    }
+    // currentUser is null
+    return null
+  }
+
+  async authUser() {
     await this.init();
-    console.log('userIdFromDrive', userIdFromDrive);
+
+    // GoogleAuth can be null when gapi not corrected was init;
     const GoogleAuth = gapi.auth2.getAuthInstance();
 
-    // console.log('isSignedIn', GoogleAuth.isSignedIn.get(), GoogleAuth.currentUser.get().getBasicProfile().getEmail());
+    // console.log(GoogleAuth.currentUser.get())
+
+    // id is null when app signin with google only https://myaccount.google.com/permissions
+    const id = gapi.auth2.getAuthInstance().currentUser.get().getId()
+    console.log(id)
+
+    // handle expired signin session / token
 
     if (GoogleAuth.isSignedIn.get()) {
-      const grantedScopes = GoogleAuth.currentUser.get().getGrantedScopes();
-      console.log(grantedScopes)
-      // check for scopes
-      if (userIdFromDrive) {
-        const isSameUser = isSameId(GoogleAuth.currentUser.get().getId(), userIdFromDrive);
-        if (isSameUser) {
-          console.log('already signin from drive and existing are same!!', userIdFromDrive);
-          return userIdFromDrive;
-        }
-        this.openWithState = null;
-        this.driveActiveImageId = null;
-        console.log('isSameUser is false');
-        console.log('signOut');
-        GoogleAuth.signOut();
-      } else {
-        console.log('userIdFromDrive is undefined');
-        return GoogleAuth.currentUser.get();
-      }
+      return this.handleCheckForDifferentUsers(GoogleAuth.currentUser.get());
     }
-
-    const res = handleAuthorizeDriveModal();
-    if (!res) return
-
-    const currentUser = await this.signInWithGoogle();
-
-    if (currentUser.error) {
-      // this.authUser();
-      console.log('currentUser.error')
-      this.openWithState = null;
-      this.driveActiveImageId = null;
-      return;
-    }
-    // const grantedScopes = currentUser
-    if (userIdFromDrive) {
-      const isSameUser = isSameId(currentUser.getId(), userIdFromDrive);
-      console.log('isSameUser', isSameUser);
-      if (!isSameUser) {
-        GoogleAuth.disconnect();
-        // eslint-disable-next-line
-        const isUserAcceptedNewSigninFlow = confirm("Drive account and choosed account doesn't match. Choose account again");
-        if (isUserAcceptedNewSigninFlow) {
-          console.log('isUserAcceptedNewSigninFlow', isUserAcceptedNewSigninFlow);
-          // return handleAuthProcess(null, userIdFromDrive);
-        }
-        // eslint-disable-next-line
-        alert('Your state was lost');
-        return;
-      }
-      console.log('signin from drive first time');
-      return currentUser;
-    }
-    console.log('signin independent first time');
-    return currentUser;
+    return this.handleAuthorizeDriveModal();
   }
 }
 
-const Gapi = new GapiBrowserLibrary();
+const Gapi = new GapiClient(API_KEY, CLIENT_ID, DISCOVERY_URLS, SCOPES);
 
 export default Gapi;

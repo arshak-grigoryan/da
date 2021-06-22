@@ -1,13 +1,10 @@
-import { handlDriveUploadForPicker } from "../gDrive";
-import { Gapi } from '../gDrive';
+import { useState } from "react";
+import { Gapi, uploadDriveForPicker } from "../gDrive";
 
 const Button = () => {
-    console.log(Gapi);
+    const [scopes, setScopes] = useState([]);
 
-    const handlePickerClick = () => {
-        const imgSettings = {};
-        handlDriveUploadForPicker(imgSettings);
-    }
+    console.log(Gapi);
 
     const handleShareDriveClick = () => {
         Gapi.shareDrive()
@@ -18,7 +15,7 @@ const Button = () => {
     }
     
     const handleUploadClick = () => {
-        Gapi.uploadDrive()
+        uploadDriveForPicker()
     }
 
     const handleSignInClick = () => {
@@ -29,6 +26,16 @@ const Button = () => {
         Gapi.signOutGoogle()
     }
 
+    const handleRevokeAccessClick = () => {
+        Gapi.revokeAccess()
+    }
+
+    const handleGrantedScopesClick = async () => {
+        const scopes = await Gapi.getGrantedScopes();
+        setScopes(scopes.split(' ').filter(val => val.includes('auth')))
+    };
+
+
     return (
         <>
             <div>
@@ -37,8 +44,10 @@ const Button = () => {
                 <button onClick={handleUploadClick}>upload</button>
                 <button onClick={handleSignInClick}>signIn</button>
                 <button onClick={handleSignOutClick}>signOut</button>
-                <button onClick={handlePickerClick}>open picker</button>
+                <button onClick={handleRevokeAccessClick}>revoke access</button>
+                <button onClick={handleGrantedScopesClick}>see granted scopes</button>
             </div>
+            {scopes.map(scope => <p key={scope}>{scope}</p>)}
             <div>
                 <canvas id="myCanvas"></canvas>
             </div>

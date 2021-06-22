@@ -3,13 +3,14 @@ import { useHistory, useLocation } from 'react-router-dom';
 // import { useDispatch } from 'react-redux';
 
 // import canvas from 'store/canvas';
+import { uploadToDriveForPickerFolder } from '../gDrive/helpers';
 
 import {
   getDriveUiIntegrationType,
-  addSrcToCanvas,
+  drawOnCanvas,
 } from './helpers';
 import DriveApiV3 from './driveApiV3';
-import { DRIVE_UI_INTEGRATION_TYPES } from './constants';
+import { DRIVE_UI_INTEGRATION_TYPES, REDIRECT_URLS } from './constants';
 import Gapi from './gapi';
 
 const useGDrive = () => {
@@ -21,65 +22,74 @@ const useGDrive = () => {
   useEffect(() => {
     console.log('useGDrive eff');
 
-    console.log(location.search)
     const searchParams = new URLSearchParams(location.search);
 
     if (!searchParams.has('state')) {
       return null;
     }
 
-    console.log(searchParams);
     const state = JSON.parse(searchParams.get('state'));
-
+    
+    console.log(state);
+    
     const integrationType = getDriveUiIntegrationType(state);
 
+    console.log(integrationType);
+
     if (!integrationType) {
-      history.replace('/chooser');
-      return null;
+      // history.replace(REDIRECT_URLS.chooser);
+      return
     }
+
+    // sessionStorage.setItem('editor');
 
     (async () => {
       await Gapi.init();
-
-      const user = await Gapi.authUser(state.userId);
+      console.log('after init')
+      DriveApiV3.userIdFromDrive = state.userId
+      const user = await Gapi.authUser();
 
       console.log(user)
+
       if (!user) {
-        history.replace('/editor?category=photos');
+        // history.replace(REDIRECT_URLS.photo);
         return;
       }
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithAppSpecificDocument) {
-        Gapi.openWithState = state;
-        const [id] = state.ids;
-        const fileParents = await DriveApiV3.getFileFields({ fileId: id, fields: 'parents, name' });
-        console.log(fileParents);
-        const folderPermissions = await DriveApiV3.getFileFields({ fileId: fileParents.parents[0], fields: 'permissions' });
-        console.log(folderPermissions)
-        const filePermissions = await DriveApiV3.getFileFields({ fileId: id, fields: 'permissions' });
-        console.log(filePermissions);
+        DriveApiV3.openWithState = state;
+        const id = DriveApiV3.openWithState.ids[0]
+        const fields = await DriveApiV3.getFileFields({ fileId: id, fields: 'imageMediaMetadata, mimeType'});
 
-        Gapi.driveActiveImageId = id;
-        const fields = await DriveApiV3.getFileFields({ fileId: id, fields: '*'});
+        if (!fields) {
+          return
+        }
         console.log(fields)
-        window.fields = fields
-        const { imageMediaMetadata: { width, height } } = fields;
-        const { src, mimeType } = await DriveApiV3.getImageById(id);
+        // case filed error
+        const { imageMediaMetadata: { width, height }, mimeType } = fields;
+        const src = await DriveApiV3.getImageById(id);
 
-        Gapi.imgOptions = { src, mimeType, width, height };
+        DriveApiV3.imgOptions = { src, mimeType, width, height };
         // dispatch(canvas.actions.setBlankCanvasSettings({
         //   blank: true,
         //   width,
         //   height,
         // }));
         // history.replace(`/editor?customSize=${width}x${height}&unit=px&category=photos`);
-        addSrcToCanvas(Gapi.imgOptions.src);
+        drawOnCanvas(DriveApiV3.imgOptions);
         return;
       }
 
-      // if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithGoogleWorkspaceDocument) {}
+      if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithGoogleWorkspaceDocument) {
+        return
+      }
 
-      // if (integrationType === DRIVE_UI_INTEGRATION_TYPES.newButton) {}
+      if (integrationType === DRIVE_UI_INTEGRATION_TYPES.newButton) {
+        DriveApiV3.newButtonState = state
+        uploadToDriveForPickerFolder(state.folderId)
+        return
+      }
+      //
     })();
   });
 };
