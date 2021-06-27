@@ -65,8 +65,8 @@ export const drawOnCanvas = async ({width, height, src}) => {
   const baseImage = new Image();
   baseImage.src = src;
   baseImage.onload = () => {
-    canvas.width = width / 7;
-    canvas.height = height / 7;
+    canvas.width = width;
+    canvas.height = height;
     ctx.drawImage(baseImage, 0, 0);
   };
 };
@@ -110,10 +110,14 @@ export const handleDriveUpload = async ({
 };
 
 export const uploadToDriveForPickerFolder = async (folderId) => {
+
   const metadata = {
     name: '0000hardCodeName',
     mimeType: DriveApiV3.imgOptions.mimeType,
     parents: [folderId],
+    appProperties: {
+      picsart: 'PicsArt'
+    }
   };
   console.log(metadata);
   const b64Data = DriveApiV3.imgOptions.src.split(',')[1]
@@ -124,9 +128,15 @@ export const uploadToDriveForPickerFolder = async (folderId) => {
 
   console.log(form);
 
-  const res = await DriveApiV3.uploadFile(form);
-  console.log(res)
-  alert('Image Saved');
+  const res1 = await DriveApiV3.uploadFile(form);
+  console.log(res1)
+  DriveApiV3.uploadedImage.id = res1.id
+  const res2 = await DriveApiV3.getFileFields(DriveApiV3.uploadedImage.id, 'webViewLink');
+  DriveApiV3.uploadedImage.webViewLink = res2.webViewLink;
+
+  console.log(res2)
+
+  alert(`Image Saved ${DriveApiV3.uploadedImage.webViewLink}`);
 };
 
 export const uploadDriveForPicker = async () => {

@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Gapi, uploadDriveForPicker } from "../gDrive";
+import { Gapi, uploadDriveForPicker, DriveApiV3 } from "../gDrive";
 
 const Button = () => {
     const [scopes, setScopes] = useState([]);
 
     console.log(Gapi);
 
-    const handleShareDriveClick = () => {
-        Gapi.shareDrive()
+    const handleShareDriveClick = async () => {
+        await Gapi.shareDrive();
+        s.showSettingsDialog();
+        DriveApiV3.uploadedImage.id = null;
     }
     
     const handleAuthClick = () => {
@@ -15,7 +17,7 @@ const Button = () => {
     }
     
     const handleUploadClick = () => {
-        uploadDriveForPicker()
+        uploadDriveForPicker();
     }
 
     const handleSignInClick = () => {

@@ -4,27 +4,16 @@ import {
   DISCOVERY_URLS,
   SCOPES,
   GOOGLE_API_CLIENT_API_SCRIPT_URL,
-  DRIVE_API_SCOPES,
 } from './constants';
 import { addScript } from './helpers';
 import DriveApiV3 from './driveApiV3';
 
-// class Person {
-//   static async create () {
-//       return new Promise((res, rej) => {
-//           setTimeout(() => res(console.log(‘created’)), 2000)
-//       })
-//   }
-// }
-// var newInstance = await Person.create();
-// console.log(‘>>>’);
-
 class GapiClient {
-  constructor(apiKey, clientId, discoverUrls, scopes) {
-    GapiClient.apiKey = apiKey;
-    GapiClient.clientId = clientId;
-    GapiClient.discoverUrls = discoverUrls;
-    GapiClient.scopes = scopes;
+  constructor() {
+    GapiClient.apiKey = API_KEY;
+    GapiClient.clientId = CLIENT_ID;
+    GapiClient.discoverUrls = DISCOVERY_URLS;
+    GapiClient.scopes = SCOPES;
   }
 
   async init() {
@@ -93,23 +82,19 @@ class GapiClient {
     gapi.auth2.getAuthInstance().disconnect();
   }
 
-  async shareDrive(resetProgressCallback) {
-    // console.log('shareDrive');
+  async shareDrive() {
     await this.init();
     await GapiClient.loadDriveShare();
     const token = gapi.auth.getToken().access_token;
-    const s = await new gapi.drive.share.ShareClient();
+    window.s = await new gapi.drive.share.ShareClient();
     s.setOAuthToken(token);
-    s.setItemIds(this.driveActiveImageId);
-    s.showSettingsDialog();
-    this.driveActiveImageId = null;
-    resetProgressCallback();
+    s.setItemIds(DriveApiV3.uploadedImage.id);
   }
 
-  async handleCheckForDifferentUsers(currentUser) {
+  async handleDifferentUsers(currentUser) {
     // console.log(currentUser, DriveApiV3.userIdFromDrive)
     if (currentUser.getId() === DriveApiV3.userIdFromDrive) {
-      return this.handleCheckGorGrantedScopes(currentUser)
+      return this.handleGrantedScopes(currentUser)
     }
 
     await this.revokeAccess()
@@ -124,26 +109,29 @@ class GapiClient {
   }
 
   async getGrantedScopes() {
-    await GapiClient.init()
+    await this.init()
     return gapi.auth2.getAuthInstance().currentUser.get().getGrantedScopes()
   }
 
-  handleCheckGorGrantedScopes(currentUser) {
-    // need refactor
+  handleGrantedScopes(currentUser) {
     const grantedScopes = currentUser.getGrantedScopes();
-    const { recommended: { file, install } } = DRIVE_API_SCOPES;
-    if (grantedScopes.includes(file) && grantedScopes.includes(install)) {
-      return currentUser
-    }
+    const scopesList = GapiClient.scopes.split(' ');
 
-    return this.handleAuthorizeDriveModal();
+    for(let i=0; i<scopesList.length; i++) {
+      if(!grantedScopes.includes(scopesList[i])) {
+        return this.handleAuthorizeDriveModal();
+      }
+    };
+
+    return currentUser;
   }
 
   async handleSignInPrompt() {
     await this.revokeAccess();
     const currentUser = await this.signInWithGoogle();
+    
     if (currentUser) {
-      return this.handleCheckForDifferentUsers(currentUser)
+      return this.handleDifferentUsers(currentUser)
     }
 
     return this.handleAuthorizeDriveModal();
@@ -174,12 +162,13 @@ class GapiClient {
     // handle expired signin session / token
 
     if (GoogleAuth.isSignedIn.get()) {
-      return this.handleCheckForDifferentUsers(GoogleAuth.currentUser.get());
+      return this.handleDifferentUsers(GoogleAuth.currentUser.get());
     }
+
     return this.handleAuthorizeDriveModal();
   }
 }
 
-const Gapi = new GapiClient(API_KEY, CLIENT_ID, DISCOVERY_URLS, SCOPES);
+const Gapi = new GapiClient();
 
 export default Gapi;

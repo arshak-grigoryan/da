@@ -3,7 +3,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 // import { useDispatch } from 'react-redux';
 
 // import canvas from 'store/canvas';
-import { uploadToDriveForPickerFolder } from '../gDrive/helpers';
 
 import {
   getDriveUiIntegrationType,
@@ -37,7 +36,7 @@ const useGDrive = () => {
     console.log(integrationType);
 
     if (!integrationType) {
-      // history.replace(REDIRECT_URLS.chooser);
+      history.replace(REDIRECT_URLS.chooser);
       return
     }
 
@@ -45,23 +44,23 @@ const useGDrive = () => {
 
     (async () => {
       await Gapi.init();
-      console.log('after init')
+      console.log(Gapi)
       DriveApiV3.userIdFromDrive = state.userId
       const user = await Gapi.authUser();
 
       console.log(user)
 
       if (!user) {
-        // history.replace(REDIRECT_URLS.photo);
+        history.replace(REDIRECT_URLS.photo);
         return;
       }
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithAppSpecificDocument) {
         DriveApiV3.openWithState = state;
         const id = DriveApiV3.openWithState.ids[0]
-        const fields = await DriveApiV3.getFileFields({ fileId: id, fields: 'imageMediaMetadata, mimeType'});
-
+        const fields = await DriveApiV3.getFileFields(id, '*');
         if (!fields) {
+          history.replace(REDIRECT_URLS.photo);
           return
         }
         console.log(fields)
@@ -85,8 +84,8 @@ const useGDrive = () => {
       }
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.newButton) {
-        DriveApiV3.newButtonState = state
-        uploadToDriveForPickerFolder(state.folderId)
+        DriveApiV3.newButtonState = state;
+        // history.replace(REDIRECT_URLS.photo);
         return
       }
       //
