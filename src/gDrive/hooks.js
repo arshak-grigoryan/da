@@ -57,7 +57,8 @@ const useGDrive = () => {
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithAppSpecificDocument) {
         DriveApiV3.openWithState = state;
-        const id = DriveApiV3.openWithState.ids[0]
+        const id = DriveApiV3.openWithState.ids[0];
+        DriveApiV3.uploadedImage.id = id;
         const fields = await DriveApiV3.getFileFields(id, '*');
         if (!fields) {
           history.replace(REDIRECT_URLS.photo);

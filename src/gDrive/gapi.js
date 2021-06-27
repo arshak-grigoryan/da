@@ -85,10 +85,12 @@ class GapiClient {
   async shareDrive() {
     await this.init();
     await GapiClient.loadDriveShare();
+    console.log(DriveApiV3.uploadedImage.id)
     const token = gapi.auth.getToken().access_token;
     window.s = await new gapi.drive.share.ShareClient();
     s.setOAuthToken(token);
     s.setItemIds(DriveApiV3.uploadedImage.id);
+    s.showSettingsDialog();
   }
 
   async handleDifferentUsers(currentUser) {

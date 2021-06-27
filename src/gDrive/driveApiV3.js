@@ -5,7 +5,7 @@ const DriveApiV3 = {
   userIdFromDrive: null,
   uploadedImage: {
     id: null,
-    webViewLink: null
+    webViewLink: null,
   },
   openWithState: null,
   newButtonState: null,

@@ -7,9 +7,8 @@ const Button = () => {
     console.log(Gapi);
 
     const handleShareDriveClick = async () => {
-        await Gapi.shareDrive();
-        s.showSettingsDialog();
-        DriveApiV3.uploadedImage.id = null;
+        Gapi.shareDrive();
+        console.log(DriveApiV3)
     }
     
     const handleAuthClick = () => {
