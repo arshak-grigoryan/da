@@ -7,7 +7,7 @@ export const DRIVE_MULTIPART_UPLOAD_URL = 'https://www.googleapis.com/upload/dri
 // configs
 export const API_KEY = 'AIzaSyDy6SRTXKsQx4TlXzxWw1LcN7OwiwwgtQM';
 export const CLIENT_ID = '797908848155-g3s0vkl72b2hflvrq6mcq3et891evoim.apps.googleusercontent.com';
-const DRIVE_API_DISCOVERY_DOCUMENT = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+const DRIVE_API_DISCOVERY_DOCUMENT = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 export const DISCOVERY_URLS = [
   DRIVE_API_DISCOVERY_DOCUMENT,
@@ -48,4 +48,4 @@ export const DRIVE_UI_INTEGRATION_TYPES = {
 export const REDIRECT_URLS = {
   chooser: '/chooser',
   photo: '/editor?category=photos',
-}
+};

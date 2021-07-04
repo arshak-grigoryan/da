@@ -6,7 +6,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 
 import {
   getDriveUiIntegrationType,
-  drawOnCanvas,
+  // drawOnCanvas,
 } from './helpers';
 import DriveApiV3 from './driveApiV3';
 import { DRIVE_UI_INTEGRATION_TYPES, REDIRECT_URLS } from './constants';
@@ -18,37 +18,33 @@ const useGDrive = () => {
   const history = useHistory();
   // const dispatch = useDispatch();
 
-  useEffect(() => {
-    console.log('useGDrive eff');
-
+  useEffect((): void => {
     const searchParams = new URLSearchParams(location.search);
 
-    if (!searchParams.has('state')) {
-      return null;
+    const stateJson: null | string = searchParams.get('state');
+
+    if (!stateJson) {
+      return;
     }
 
-    const state = JSON.parse(searchParams.get('state'));
-    
-    console.log(state);
-    
-    const integrationType = getDriveUiIntegrationType(state);
+    const state = JSON.parse(stateJson);
 
-    console.log(integrationType);
+    const integrationType = getDriveUiIntegrationType(state);
 
     if (!integrationType) {
       history.replace(REDIRECT_URLS.chooser);
-      return
+      return;
     }
 
     // sessionStorage.setItem('editor');
 
     (async () => {
       await Gapi.init();
-      console.log(Gapi)
-      DriveApiV3.userIdFromDrive = state.userId
+      console.log(Gapi);
+      DriveApiV3.userIdFromDrive = state.userId;
       const user = await Gapi.authUser();
 
-      console.log(user)
+      console.log(user);
 
       if (!user) {
         history.replace(REDIRECT_URLS.photo);
@@ -58,16 +54,19 @@ const useGDrive = () => {
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithAppSpecificDocument) {
         DriveApiV3.openWithState = state;
         const id = DriveApiV3.openWithState.ids[0];
-        DriveApiV3.uploadedImage.id = id;
         const fields = await DriveApiV3.getFileFields(id, '*');
         if (!fields) {
           history.replace(REDIRECT_URLS.photo);
-          return
+          return;
         }
-        console.log(fields)
+        console.log(fields);
         // case filed error
-        const { imageMediaMetadata: { width, height }, mimeType } = fields;
+        const { imageMediaMetadata: { width, height }, mimeType }: any = fields;
         const src = await DriveApiV3.getImageById(id);
+
+        if (!src) {
+          return;
+        }
 
         DriveApiV3.imgOptions = { src, mimeType, width, height };
         // dispatch(canvas.actions.setBlankCanvasSettings({
@@ -75,19 +74,18 @@ const useGDrive = () => {
         //   width,
         //   height,
         // }));
-        // history.replace(`/editor?customSize=${width}x${height}&unit=px&category=photos`);
-        drawOnCanvas(DriveApiV3.imgOptions);
+        history.replace(`/editor?customSize=${width}x${height}&unit=px&category=photos`);
+        // drawOnCanvas(DriveApiV3.imgOptions);
         return;
       }
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.openWithGoogleWorkspaceDocument) {
-        return
+        return;
       }
 
       if (integrationType === DRIVE_UI_INTEGRATION_TYPES.newButton) {
         DriveApiV3.newButtonState = state;
-        // history.replace(REDIRECT_URLS.photo);
-        return
+        history.replace(REDIRECT_URLS.photo);
       }
       //
     })();

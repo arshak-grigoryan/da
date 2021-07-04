@@ -1,10 +1,10 @@
 import { API_KEY } from './constants';
-import Gapi from './gapi';
+
+declare const gapi: any;
+declare const google: any;
 
 class PickerWidget {
-  async init(callback) {
-    const currentUser = await Gapi.authUser();
-    if (!currentUser) return
+  async init(callback: () => {}) {
     console.log('initPicker');
     await PickerWidget.loadPicker();
     await PickerWidget.createPicker(callback);
@@ -17,7 +17,7 @@ class PickerWidget {
     });
   }
 
-  static async createPicker(callback) {
+  static async createPicker(callback: () => {}) {
     console.log(callback);
     const oauthToken = gapi.auth.getToken().access_token;
 
@@ -51,23 +51,23 @@ class PickerWidget {
       // .addView(starredView)
       .setOAuthToken(oauthToken)
       .setDeveloperKey(API_KEY)
-      .setCallback(data => PickerWidget.pickerCallback(data, callback))
+      .setCallback((data: any) => PickerWidget.pickerCallback(data, callback))
       .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
       .setTitle('Pick a folder')
       .build();
     picker.setVisible(true);
   }
 
-  static async pickerCallback(data, callback) {
-    console.log(data)
+  static async pickerCallback(data: any, callback: (folderId: string) => {}) {
+    console.log(data);
     if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
       const folder = data[google.picker.Response.DOCUMENTS][0];
-      console.log(folder)
-      callback(folder.id)
+      console.log(folder);
+      callback(folder.id);
     }
   }
 }
 
-const PickerFolder = new PickerWidget();
+const PickerFolder: any = new PickerWidget();
 
 export default PickerFolder;
