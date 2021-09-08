@@ -7,7 +7,7 @@ import {
 } from './constants';
 import DriveApiV3 from './driveApiV3';
 
-declare const gapi: any;
+// declare const gapi: any;
 
 class GapiClient {
   static readonly apiKey = API_KEY;

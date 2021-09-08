@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Gapi, uploadDriveForPicker } from "../gDrive";
 
-declare const gapi: any;
+// declare const gapi: any;
 
 const Button = () => {
-    const [scopes, setScopes] = useState([]);
+    const [scopes, setScopes] = useState([] as any);
     console.log(Gapi);
     
     const handleAuthClick = () => {
@@ -47,7 +47,7 @@ const Button = () => {
                 <button onClick={handleRevokeAccessClick}>revoke access</button>
                 <button onClick={handleGrantedScopesClick}>see granted scopes</button>
             </div>
-            {scopes.map(scope => <p key={scope}>{scope}</p>)}
+            {scopes.map((scope:string) => <p key={scope}>{scope}</p>)}
             <div>
                 <canvas id="myCanvas"></canvas>
             </div>

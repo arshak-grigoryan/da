@@ -19,15 +19,13 @@ const useGDrive = () => {
   // const dispatch = useDispatch();
 
   useEffect((): void => {
-    const searchParams = new URLSearchParams(location.search);
+    const searchParams: any = new URLSearchParams(location.search);
 
-    const stateJson: null | string = searchParams.get('state');
-
-    if (!stateJson) {
+    if (!searchParams.has('state')) {
       return;
     }
 
-    const state = JSON.parse(stateJson);
+    const state = JSON.parse(searchParams.get('state'));
 
     const integrationType = getDriveUiIntegrationType(state);
 
